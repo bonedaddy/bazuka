@@ -8,6 +8,10 @@ pub async fn transact<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
+    // verify first before locking
+    if req.tx_delta.tx.verify_signature() {
+        return Err(NodeError::SignatureVerification);
+    }
     let mut context = context.write().await;
     let now = context.local_timestamp();
     context

@@ -52,4 +52,6 @@ pub enum NodeError {
     HandshakeClientMismatch,
     #[error("remote server error: {0}")]
     RemoteServerError(String),
+    #[error("signature verification failed")]
+    SignatureVerification,
 }
