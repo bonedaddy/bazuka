@@ -32,25 +32,38 @@ pub async fn sync_mempool<B: Blockchain>(
             .map(|(_, r)| (r.tx, r.tx_zk, r.zk_tx, r.zk))
             .collect::<Vec<_>>();
         for (tx_s, tx_zk_s, zk_tx_s, zk_s) in resps {
-            for tx in tx_s {
+            for tx in tx_s.into_iter().filter(|tx| tx.tx.verify_signature()) {
                 ctx.mempool
                     .tx
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
-            for tx in tx_zk_s {
+            for tx in tx_zk_s
+                .into_iter()
+                .filter(|tx| tx.payment.verify_signature())
+            {
                 ctx.mempool
                     .tx_zk
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
-            for tx in zk_tx_s {
+            for tx in zk_tx_s.into_iter().filter(|tx| {
+                let _ = tx.payment.fingerprint();
+                true
+            }) {
                 ctx.mempool
                     .zk_tx
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
-            for tx in zk_s {
+            for tx in zk_s.into_iter().filter(|tx| {
+                if !tx.verify(&tx.dst_pub_key) {
+                    log::warn!("zk_s tx {:?} is not valid", tx.sig);
+                    false
+                } else {
+                    true
+                }
+            }) {
                 ctx.mempool
                     .zk
                     .entry(tx)
