@@ -8,7 +8,6 @@ pub async fn transact<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
-    // verify first before locking
     if req.tx_delta.tx.verify_signature() {
         return Err(NodeError::SignatureVerification);
     }

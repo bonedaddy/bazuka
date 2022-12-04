@@ -8,6 +8,9 @@ pub async fn post_mpn_deposit<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: PostMpnDepositRequest,
 ) -> Result<PostMpnDepositResponse, NodeError> {
+    if !req.tx.payment.verify_signature() {
+        return Err(NodeError::SignatureVerification);
+    }
     let mut context = context.write().await;
     let now = context.local_timestamp();
     context

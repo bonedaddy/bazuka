@@ -32,45 +32,35 @@ pub async fn sync_mempool<B: Blockchain>(
             .map(|(_, r)| (r.tx, r.tx_zk, r.zk_tx, r.zk))
             .collect::<Vec<_>>();
         for (tx_s, tx_zk_s, zk_tx_s, zk_s) in resps {
-            for tx in tx_s.into_iter().filter(|tx| tx.tx.verify_signature()) {
-                ctx.mempool
-                    .tx
-                    .entry(tx)
-                    .or_insert(TransactionStats { first_seen: now });
-            }
-            for tx in tx_zk_s
+            tx_s.into_iter()
+                .filter(|tx| tx.tx.verify_signature())
+                .for_each(|tx| {
+                    ctx.mempool
+                        .tx
+                        .entry(tx)
+                        .or_insert(TransactionStats { first_seen: now });
+                });
+            tx_zk_s
                 .into_iter()
                 .filter(|tx| tx.payment.verify_signature())
-            {
-                ctx.mempool
-                    .tx_zk
-                    .entry(tx)
-                    .or_insert(TransactionStats { first_seen: now });
-            }
-            for tx in zk_tx_s.into_iter().filter(|tx| {
-                let _ = tx.payment.fingerprint();
-                true
-            }) {
+                .for_each(|tx| {
+                    ctx.mempool
+                        .tx_zk
+                        .entry(tx)
+                        .or_insert(TransactionStats { first_seen: now });
+                });
+            zk_tx_s.into_iter().for_each(|tx| {
                 ctx.mempool
                     .zk_tx
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
-            }
-            for tx in zk_s.into_iter().filter(|tx| {
-                if !tx.verify(&tx.dst_pub_key) {
-                    log::debug!("zk_s tx {:?} is not valid", tx.sig);
-                    // todo: just log for now
-                    //false
-                    true
-                } else {
-                    true
-                }
-            }) {
+            });
+            zk_s.into_iter().for_each(|tx| {
                 ctx.mempool
                     .zk
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
-            }
+            });
         }
     }
 
