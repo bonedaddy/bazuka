@@ -72,13 +72,17 @@ pub async fn sync_blocks<B: Blockchain>(
                 break;
             }
 
-            // TODO: Check parent hashes
             let ctx = context.read().await;
             for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
                 if head.number > 0 {
-                    if let Ok(last_header) = ctx.blockchain.get_header(head.number-1) {
+                    if let Ok(last_header) = ctx.blockchain.get_header(head.number - 1) {
                         if last_header.hash().ne(&head.parent_hash) {
-                            log::warn!("found bad parent hash. got {:?}, want {:?}, offender {:?}", head.parent_hash, last_header.hash(), head);
+                            log::warn!(
+                                "found bad parent hash. got {:?}, want {:?}, offender {:?}",
+                                head.parent_hash,
+                                last_header.hash(),
+                                head
+                            );
                             chain_fail = true;
                             break;
                         }
