@@ -74,19 +74,15 @@ pub async fn sync_blocks<B: Blockchain>(
 
             let ctx = context.read().await;
             for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
-                if head.number > 0 {
-                    if let Ok(last_header) = ctx.blockchain.get_header(head.number - 1) {
-                        if last_header.hash().ne(&head.parent_hash) {
-                            log::warn!(
-                                "found bad parent hash. got {:?}, want {:?}, offender {:?}",
-                                head.parent_hash,
-                                last_header.hash(),
-                                head
-                            );
-                            chain_fail = true;
-                            break;
-                        }
-                    }
+                if i > 0 && headers[i - 1].hash().ne(&head.parent_hash) {
+                    log::warn!(
+                        "found bad parent hash. got {:?}, want {:?}, offender {:?}",
+                        head.parent_hash,
+                        headers[i - 1].hash(),
+                        head
+                    );
+                    chain_fail = true;
+                    break;
                 }
                 if head.proof_of_work.target < min_target || !head.meets_target(&pow_key) {
                     log::warn!("Header doesn't meet min target!");
