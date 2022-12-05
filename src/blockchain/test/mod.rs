@@ -6,7 +6,7 @@ use crate::db;
 
 mod contract;
 
-fn easy_config() -> BlockchainConfig {
+pub fn easy_config() -> BlockchainConfig {
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = Difficulty(0x00ffffff);
     conf.minimum_pow_difficulty = Difficulty(0x00ffffff);

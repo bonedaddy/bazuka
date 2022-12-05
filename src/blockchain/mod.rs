@@ -1592,4 +1592,4 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 }
 
 #[cfg(test)]
-mod test;
+pub mod test;
