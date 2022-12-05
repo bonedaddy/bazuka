@@ -13,9 +13,7 @@ use crate::blockchain::Blockchain;
 use crate::client::messages::*;
 use crate::utils;
 use std::sync::Arc;
-use tokio::join;
 use tokio::sync::{RwLock, RwLockWriteGuard};
-use tokio::time::sleep;
 
 pub async fn heartbeat<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
