@@ -74,6 +74,12 @@ pub async fn sync_blocks<B: Blockchain>(
 
             let ctx = context.read().await;
             for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
+                // perform the fastest to fail verification checks first
+                if head.number != start_height + i as u64 {
+                    log::warn!("Bad header number returned!");
+                    chain_fail = true;
+                    break;
+                }
                 if i > 0 && headers[i - 1].hash().ne(&head.parent_hash) {
                     log::warn!(
                         "found bad parent hash. got {:?}, want {:?}, offender {:?}",
@@ -89,11 +95,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     chain_fail = true;
                     break;
                 }
-                if head.number != start_height + i as u64 {
-                    log::warn!("Bad header number returned!");
-                    chain_fail = true;
-                    break;
-                }
+
                 if head.number < local_height && head == &ctx.blockchain.get_header(head.number)? {
                     log::warn!("Duplicate header given!");
                     chain_fail = true;
