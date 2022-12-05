@@ -1,5 +1,5 @@
 use super::*;
-use crate::common::*;
+use crate::{common::*, core::Header};
 
 pub async fn sync_blocks<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -80,13 +80,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     chain_fail = true;
                     break;
                 }
-                if i > 0 && headers[i - 1].hash().ne(&head.parent_hash) {
-                    log::warn!(
-                        "found bad parent hash. got {:?}, want {:?}, offender {:?}",
-                        head.parent_hash,
-                        headers[i - 1].hash(),
-                        head
-                    );
+                if !validate_parent_hash(i, &headers[..], head) {
                     chain_fail = true;
                     break;
                 }
@@ -258,4 +252,106 @@ pub async fn sync_blocks<B: Blockchain>(
     }
 
     Ok(())
+}
+
+/// returns `true` if the parent hash verification is ok, false if it is not
+fn validate_parent_hash(
+    idx: usize,
+    parent_headers: &[Header],
+    header: &crate::core::Header,
+) -> bool {
+    if idx == 0 || idx - 1 > parent_headers.len() {
+        return false;
+    };
+    let parent_header_hash = parent_headers[idx - 1].hash();
+    let ok = if parent_header_hash.ne(&header.parent_hash) {
+        log::warn!(
+            "found bad parent hash. got {:?}, want {:?}, offender {:?}",
+            header.parent_hash,
+            parent_header_hash,
+            header
+        );
+        false
+    } else {
+        true
+    };
+    ok
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::blockchain::test::easy_config;
+    use crate::blockchain::KvStoreChain;
+    use crate::db::RamKvStore;
+    use crate::node::TxBuilder;
+    use std::collections::HashMap;
+    #[test]
+    fn test_validate_parent_hash() {
+        let miner = TxBuilder::new(&Vec::from("MINER"));
+
+        let mut chain = KvStoreChain::new(RamKvStore::new(), easy_config()).unwrap();
+
+        let new_block = chain
+            .draft_block(60, &mut HashMap::new(), &miner, true)
+            .unwrap()
+            .unwrap()
+            .block;
+        chain.extend(1, &[new_block.clone()]).unwrap();
+
+        let new_block = chain
+            .draft_block(60, &mut HashMap::new(), &miner, true)
+            .unwrap()
+            .unwrap()
+            .block;
+        chain.extend(2, &[new_block.clone()]).unwrap();
+
+        let new_block = chain
+            .draft_block(60, &mut HashMap::new(), &miner, true)
+            .unwrap()
+            .unwrap()
+            .block;
+        chain.extend(3, &[new_block.clone()]).unwrap();
+
+        let new_block = chain
+            .draft_block(60, &mut HashMap::new(), &miner, true)
+            .unwrap()
+            .unwrap()
+            .block;
+        chain.extend(4, &[new_block.clone()]).unwrap();
+
+        let genesis = chain.get_header(0).unwrap();
+        let block_two = chain.get_header(1).unwrap();
+        let block_three = chain.get_header(2).unwrap();
+        let block_four = chain.get_header(3).unwrap();
+
+        assert!(validate_parent_hash(1, &[genesis.clone()], &block_two) == true);
+        assert!(
+            validate_parent_hash(2, &[genesis.clone(), block_two.clone()], &block_three) == true
+        );
+        // verify invalid header detection
+        assert!(
+            validate_parent_hash(
+                0,
+                &[genesis.clone(), block_four.clone(), block_three.clone()],
+                &block_two
+            ) == false
+        );
+        // verify invalid header detection
+        assert!(
+            validate_parent_hash(
+                3,
+                &[genesis.clone(), block_four.clone(), block_three.clone()],
+                &block_two
+            ) == false
+        );
+        // verify attempting to access past the array length doesnt panic
+        assert!(
+            validate_parent_hash(
+                10,
+                &[genesis.clone(), block_four.clone(), block_three.clone()],
+                &block_two
+            ) == false
+        );
+    }
 }
