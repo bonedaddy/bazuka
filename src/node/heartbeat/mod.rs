@@ -49,7 +49,10 @@ pub async fn heartbeat<B: Blockchain>(
         log::error!("mempool sync failed {}", e)
     }
 
-    Ok(sync_state::sync_state(&context).await?)
+    if let Err(e) = sync_state::sync_state(&context).await {
+        log::error!("sync state failed {}", e);
+    }
+    Ok(())
 }
 
 pub async fn heartbeater<B: Blockchain>(
